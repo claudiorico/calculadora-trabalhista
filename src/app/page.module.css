@@ -1,0 +1,121 @@
+.main {
+  min-height: 100vh;
+  padding-top: 70px; /* Offset for fixed header */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background Glow Effects */
+.main::before,
+.main::after {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  opacity: 0.5;
+}
+
+.main::before {
+  top: -100px;
+  left: -200px;
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.main::after {
+  bottom: 100px;
+  right: -200px;
+  background: rgba(168, 85, 247, 0.15);
+}
+
+.hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.heroContent {
+  max-width: 800px;
+  margin-bottom: 60px;
+  animation: fadeUp 0.8s ease forwards;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 16px;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary-color);
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 24px;
+}
+
+.subtitle {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.calculatorContainer {
+  width: 100%;
+  max-width: 800px;
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  box-shadow: var(--shadow-card);
+  animation: fadeUp 0.8s ease 0.2s forwards;
+  opacity: 0;
+}
+
+.calculatorPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 0;
+}
+
+.placeholderText {
+  color: var(--text-secondary);
+}
+
+.actionBtn {
+  width: 100%;
+  max-width: 300px;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 60px 24px;
+  }
+  
+  .calculatorContainer {
+    padding: 24px;
+  }
+}
