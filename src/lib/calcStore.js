@@ -1,47 +1,75 @@
 /**
- * Store in-memory para sessões de cálculo.
- * Guarda resultado, email, paymentId e status enquanto o servidor está rodando.
- * Em produção, isso seria substituído pelo Supabase.
+ * Store persistido em /tmp para sessões de cálculo.
+ *
+ * Por que /tmp?
+ * - O Vercel mantém instâncias "quentes" por alguns minutos entre requests.
+ *   Um Map in-memory se perde quando a instância esfria (cold start).
+ * - /tmp é o único diretório gravável em ambientes serverless (Vercel, Lambda, etc.)
+ *   e persiste dentro de uma mesma instância aquecida.
+ * - É suficiente para o fluxo: criar PIX → pagar → webhook confirmar → polling detectar.
+ *   O tempo total desse fluxo raramente passa de 5 minutos.
+ *
+ * Em produção de longo prazo, substituir pelo Supabase.
  */
 
-const store = new Map();
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
-/**
- * Salva os dados de um cálculo.
- * @param {string} calcId
- * @param {{ resultado: object, email: string, paymentId: string, status: string }} data
- */
-export function saveCalc(calcId, data) {
-  store.set(calcId, { ...data, status: 'pending' });
+const STORE_PATH = join('/tmp', 'calc_store.json');
+
+function readStore() {
+  try {
+    if (existsSync(STORE_PATH)) {
+      return JSON.parse(readFileSync(STORE_PATH, 'utf8'));
+    }
+  } catch {
+    // arquivo corrompido ou sem permissão — começa do zero
+  }
+  return {};
 }
 
-/**
- * Busca os dados de um cálculo pelo calcId.
- * @param {string} calcId
- */
-export function getCalc(calcId) {
-  return store.get(calcId) || null;
-}
-
-/**
- * Marca um cálculo como pago.
- * @param {string} calcId
- */
-export function markAsPaid(calcId) {
-  const entry = store.get(calcId);
-  if (entry) {
-    store.set(calcId, { ...entry, status: 'confirmed' });
+function writeStore(data) {
+  try {
+    writeFileSync(STORE_PATH, JSON.stringify(data), 'utf8');
+  } catch (e) {
+    console.error('[calcStore] Erro ao gravar store:', e.message);
   }
 }
 
 /**
- * Busca o calcId a partir de um paymentId do Asaas (externalReference).
- * O Asaas devolve o calcId no campo externalReference do webhook,
- * então este método é um atalho para consistência.
- * @param {string} paymentId
+ * Salva os dados de um cálculo.
+ */
+export function saveCalc(calcId, data) {
+  const store = readStore();
+  store[calcId] = { ...data, status: 'pending' };
+  writeStore(store);
+}
+
+/**
+ * Busca os dados de um cálculo pelo calcId.
+ */
+export function getCalc(calcId) {
+  const store = readStore();
+  return store[calcId] || null;
+}
+
+/**
+ * Marca um cálculo como pago.
+ */
+export function markAsPaid(calcId) {
+  const store = readStore();
+  if (store[calcId]) {
+    store[calcId] = { ...store[calcId], status: 'confirmed' };
+    writeStore(store);
+  }
+}
+
+/**
+ * Busca pelo paymentId do Asaas (externalReference).
  */
 export function getCalcByPaymentId(paymentId) {
-  for (const [calcId, data] of store.entries()) {
+  const store = readStore();
+  for (const [calcId, data] of Object.entries(store)) {
     if (data.paymentId === paymentId) {
       return { calcId, ...data };
     }

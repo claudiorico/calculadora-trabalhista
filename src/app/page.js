@@ -58,6 +58,7 @@ export default function Home() {
           base64Image={paymentData.qrCodeImage}
           calcId={paymentData.calcId}
           resultado={paymentData.resultado}
+          mock={paymentData.mock}
           onCancel={() => setPaymentData(null)}
           onPaymentConfirmed={handlePaymentConfirmed}
         />

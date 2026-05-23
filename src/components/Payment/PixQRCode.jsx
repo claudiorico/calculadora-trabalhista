@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import Button from '@/components/UI/Button';
 import styles from './PixQRCode.module.css';
 
-const POLL_INTERVAL_MS = 3000; // verifica a cada 3 segundos
+const POLL_INTERVAL_MS = 3000;
 
-export default function PixQRCode({ payload, base64Image, calcId, resultado, onCancel, onPaymentConfirmed }) {
+export default function PixQRCode({ payload, base64Image, calcId, resultado, mock, onCancel, onPaymentConfirmed }) {
   const [copied, setCopied] = useState(false);
+  const [simulating, setSimulating] = useState(false);
   const intervalRef = useRef(null);
 
   const handleCopy = () => {
@@ -16,7 +17,7 @@ export default function PixQRCode({ payload, base64Image, calcId, resultado, onC
     setTimeout(() => setCopied(false), 3000);
   };
 
-  // Polling: verifica status do pagamento a cada 3 segundos
+  // Polling: verifica status a cada 3 segundos
   useEffect(() => {
     if (!calcId) return;
 
@@ -24,21 +25,39 @@ export default function PixQRCode({ payload, base64Image, calcId, resultado, onC
       try {
         const res = await fetch(`/api/pagamento/status?calcId=${calcId}`);
         const data = await res.json();
-
         if (data.status === 'confirmed') {
           clearInterval(intervalRef.current);
           onPaymentConfirmed(resultado);
         }
       } catch (err) {
-        // Ignora erros de rede e tenta de novo no próximo ciclo
         console.warn('[PixQRCode] Erro ao verificar status:', err);
       }
     };
 
     intervalRef.current = setInterval(checkStatus, POLL_INTERVAL_MS);
-
     return () => clearInterval(intervalRef.current);
   }, [calcId, resultado, onPaymentConfirmed]);
+
+  // Botão de simulação: chama o endpoint /simular que faz o mesmo que o webhook real
+  const handleSimular = async () => {
+    setSimulating(true);
+    try {
+      const res = await fetch('/api/pagamento/simular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calcId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Erro na simulação: ${data.error}`);
+      }
+      // O polling vai detectar o status "confirmed" e chamar onPaymentConfirmed automaticamente
+    } catch (err) {
+      alert('Erro de conexão ao simular pagamento.');
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -69,6 +88,16 @@ export default function PixQRCode({ payload, base64Image, calcId, resultado, onC
         <div className={styles.loader}></div>
         <p>Aguardando confirmação do pagamento...</p>
       </div>
+
+      {/* Botão de simulação — visível apenas em modo mock/teste */}
+      {mock && (
+        <div className={styles.mockSection}>
+          <p className={styles.mockLabel}>⚠️ Modo de Teste Ativo</p>
+          <Button variant="primary" onClick={handleSimular} disabled={simulating}>
+            {simulating ? 'Simulando...' : '✓ Simular Pagamento Confirmado'}
+          </Button>
+        </div>
+      )}
 
       <Button variant="outline" className={styles.cancelBtn} onClick={onCancel}>
         Voltar
